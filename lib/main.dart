@@ -1,17 +1,92 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geocoding/geocoding.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   // This widget is the root of your application.
   @override
+  State<Myapp> createState() => _MyAppState();
+}
+
+class _MyappState extends State<MyApp> {
+  //this would come from your supabase in a real app
+  final List<Marker> _markers = [];
+  String _locationName = 'Kizmet Map'; // this will hold our dynamic title
+  Timer? _debounce; //Used to delay geocoding until the user stops moving the map
+
+  //This function converts coordinates to a place name
+  Future<void> _reverseGeocode(LatLng center) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(center.latitude, center.longitude);
+
+      if (placemarks.isNotEmpty) {
+        final placemark =placemarks.first;
+        // You can customize what part of the address you want to show
+        final name = placemarks.locality ?? placemark.administrativeArea ?? 'Unknown Location';
+        setState(() {
+          _locationName = name;
+        });
+      }
+    } catch (e) {
+      print("Error during reverse geocoding: $e");
+    }
+  }
+
+@override
+void dispose() {
+  _debounce?.cancel();
+  super.dispose();
+}
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      home: Scaffold(
+        appBar: AppBar(
+          // The Title now uses our state variable
+          title: Text(_locationName),
+          ),
+        body: FlutterMap(
+          options: MapOptions(
+            initialCenter: const LatLng(42.8781, -88.6298),
+            initialZoom: 13.0,
+            onPositionChanged: (position, hasGesture) {
+              // Debouncing: Wait until the ser stops moving the map for 500ms
+              if (_debounce?.isActive ?? false) _debounce?.cancel();
+              _debounce = Timer(const Duration(milliseconds: 500).() {
+                if (position.center != null) {
+                  _reverseGeocode(position.center!);
+                }
+              }
+              setState(() {
+                _markers.add(
+                  Marker(
+                    width: 80.0
+                    height: 90.0
+                    point: point,
+                    child: const icon(Icons.location_pin, color: Colors.red, size: 40.0)
+                  ),
+                );
+              });
+            },
+          ),
+          children: [
+            TitleLayer(
+              urlTemplate: 'https://title.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.app',
+            )
+          ]
+        )
+      )
+      title: 'Kizmet',
       theme: ThemeData(
         // This is the theme of your application.
         //
