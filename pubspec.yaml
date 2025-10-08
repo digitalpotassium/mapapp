@@ -32,10 +32,10 @@ dependencies:
     sdk: flutter
   supabase_flutter: ^2.5.0
   cupertino_icons: ^1.0.8
-  flutter_map: ^6.1.0 #add this line
-  geocoding: ^3.0.0 #for a dynamic title (reverse geocoding)
-  flutter_map_tile_caching: ^9.0.1
-  geolocator: ^10.1.0
+  flutter_map: ^8.2.2 #add this line
+  geocoding: ^4.0.0 #for a dynamic title (reverse geocoding)
+  flutter_map_tile_caching: ^10.1.1
+  geolocator: ^14.0.2
 
 dev_dependencies:
   flutter_test:
@@ -46,7 +46,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

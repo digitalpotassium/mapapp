@@ -4,15 +4,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' show FlutterMapTileCaching;
 import 'package:geolocator/geolocator.dart';
 import 'dart:math';
 
 Future<void> main() async {
   // Ensure Flutter is Ready
   WidgetsFlutterBinding.ensureInitialized();
-
-  await FMTC.initialize();
+  //British FUCKS use an "s" not a "z" with initialize
+  await FlutterMapTileCaching.initialise();
   // Initialize Supabase
   await Supabase.initialize(
     url: 'https://vjageqfberifyclotivb.supabase.co',
@@ -185,10 +185,10 @@ void dispose() {
               _debounce = Timer(const Duration(milliseconds: 500), () async {
                 if (position.center != null) {
                   _reverseGeocode(position.center!);
-              }
-            });
-          },
-        ),
+                }
+              });
+            },
+          ),
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
