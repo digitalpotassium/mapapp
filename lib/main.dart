@@ -4,19 +4,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
+import 'package:geolocator/geolocator.dart';
 
 Future<void> main() async {
   // Ensure Flutter is Ready
   WidgetsFlutterBinding.ensureInitialized();
 
-  //load the enviornment variables from the .env file
-  await dotenv.load(fileName: ".env");
-
   // Initialize Supabase
   await Supabase.initialize(
     url: 'https://vjageqfberifyclotivb.supabase.co',
-
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqYWdlcWZiZXJpZnljbG90aXZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjMwOTcsImV4cCI6MjA3MjU5OTA5N30.Lu_RaQsjP4uE_FAFuXSFDNmuhG84ihtdmYZtSXiEz9A',
   );
 
@@ -67,7 +64,7 @@ class _MyAppState extends State<MyApp> {
         });
       }
     } catch (e) {
-      print("Error during reverse geocoding: $e");
+      print("Error fetching initial markers: $e");
     }
   }
 
@@ -75,6 +72,7 @@ class _MyAppState extends State<MyApp> {
 void initState() {
   super.initState();
   _getInitialMarkers();
+  _downloadOfflineMap();
 }
 
 Future<void> _reverseGeocode(LatLng center) async {
@@ -115,6 +113,46 @@ Future<void> _addMarkerAtCenter() async {
   }
 }
 
+Future<void> _downloadOfflineMap() async {
+  try {
+    //get user's current location
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    LatLng userLocation = LatLng(position.latitude, position.longitude);
+
+    //Define the download regions
+    final highDetailBounds = LatLngBounds.fromPoints(
+      _calculateBoundingBox(userLocation, 30), // 30-mile radius for high detail
+    );
+    final lowDetailBounds = LatLngBounds.fromPoints(
+      _calculateBoundingBox(userLocation, 100), // 100-mile radius for low detail
+    );
+
+    // Download high-detailed region
+    await FMTC.intance('mapStore').download.start(
+      description: 'High Detail',
+      area: highDetailBounds,
+      minZoom: 1,
+      maxZoom: 15,
+    );
+  } catch (e) {
+    print("Error downloading offline map: $e");
+  }
+}
+
+List<LatLng> _calculateBoundingBox(LatLng center, double radiusInMiles) {
+  const double milesToKm = 1.60934;
+  final double radiusInKm = radiusInMiles * milesToKm;
+  final double distance = radiusInKm / 2;
+  final double earthRadius = 6371.0;
+
+  double lat1 = center.latitude - (distance / earthRadius) * (180 / pi);
+  double lon1 = center.longitude - (distance / earthRadius) * (180 / pi) / cos(center.latitude * pi / 180);
+  double lat2 = center.latitude + (distance / earthRadius) * (180 / pi);
+  double lon2 = center.longitude + (distance / earthRadius) * (180 / pi) / cos(center.latitude * pi / 180);
+
+  return [LatLng(lat1, lon1), LatLng(lat2, lon2)];
+}
+
 @override
 void dispose() {
   _debounce?.cancel();
@@ -124,73 +162,53 @@ void dispose() {
 
   @override
   Widget build(BuildContext context) {
-    // retreives Mapbox access token
-    final mapboxAccessToken = dotenv.env['MAPBOX_ACCESS_TOKEN'];
-    
-    if (mapboxAccessToken == null) {
-      return const MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: Text('Mapbox Access token not found!'),
-          ),
-        ),
-      );
-    }
-
     return MaterialApp(
-      title: 'Kizmet Map',
+      title: 'Map',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
       home: Scaffold(
         appBar: AppBar(
-          // The Title now uses our state variable
           title: Text(_locationName),
-          ),
-        body: FlutterMap(
+        ),
+        body:FlutterMap(
           mapController: _mapController,
           options: MapOptions(
             initialCenter: const LatLng(42.8781, -88.6298),
             initialZoom: 13.0,
-            onPositionChanged: (position, hasGesture) {
+            on PositionChanged: (position, hasGesture) {
               // Debouncing: Wait until the ser stops moving the map for 500ms
               if (_debounce?.isActive ?? false) _debounce?.cancel();
               _debounce = Timer(const Duration(milliseconds: 500), () async {
                 if (position.center != null) {
                   _reverseGeocode(position.center!);
-                }
-              });
-            },
-          ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token={accessToken}',
-              additionalOptions: {
-                'accessToken': mapboxAccessToken,
-              },
-            ),
-            MarkerLayer(
-              markers: _markers,
-            ),
-            RichAttributionWidget(
-              attributions: [
-                TextSourceAttribution(
-                  '@ Mapbox',
-                  onTap: () {},
-                ),
-                TextSourceAttribution(
-                  '@ OpenStreetMap contributors',
-                  onTap: () {},
-                ),
-              ],
-            ),
-          ],
+              }
+            });
+          };
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: _addMarkerAtCenter,
-          tooltip: 'Add Marker',
-          child: const Icon(Icons.add_location),
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            tileProvider: FMTC.instance('mapStore').getTileProvider(),
+          ),
+          MarkerLayer(
+            markers: _markers,
+          ),
+          RichAttributionWidget(
+            attributions: [
+              TextSourceAttribution(
+                '@ OpenStreetMap contributors',
+                onTap: () {},
+              ),
+            ],
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _addMarkerAtCenter,
+        tooltip: 'Add Marker',
+        child: const Icon(Icons.add_location),
         ),
       ),
     );
