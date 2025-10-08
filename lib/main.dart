@@ -6,11 +6,13 @@ import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:geolocator/geolocator.dart';
+import 'dart:math';
 
 Future<void> main() async {
   // Ensure Flutter is Ready
   WidgetsFlutterBinding.ensureInitialized();
 
+  await FMTC.initialize();
   // Initialize Supabase
   await Supabase.initialize(
     url: 'https://vjageqfberifyclotivb.supabase.co',
@@ -128,7 +130,7 @@ Future<void> _downloadOfflineMap() async {
     );
 
     // Download high-detailed region
-    await FMTC.intance('mapStore').download.start(
+    await FMTC.instance('mapStore').download.start(
       description: 'High Detail',
       area: highDetailBounds,
       minZoom: 1,
@@ -177,7 +179,7 @@ void dispose() {
           options: MapOptions(
             initialCenter: const LatLng(42.8781, -88.6298),
             initialZoom: 13.0,
-            on PositionChanged: (position, hasGesture) {
+            onPositionChanged: (position, hasGesture) {
               // Debouncing: Wait until the ser stops moving the map for 500ms
               if (_debounce?.isActive ?? false) _debounce?.cancel();
               _debounce = Timer(const Duration(milliseconds: 500), () async {
@@ -185,7 +187,7 @@ void dispose() {
                   _reverseGeocode(position.center!);
               }
             });
-          };
+          },
         ),
         children: [
           TileLayer(
