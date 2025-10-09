@@ -11,7 +11,7 @@ import 'dart:math';
 Future<void> main() async {
   // Ensure Flutter is Ready
   WidgetsFlutterBinding.ensureInitialized();
-  //British FUCKS use an "s" not a "z" with initialize
+  //British use an "s" not a "z" with initialize
   await FMTC.FMTCObjectBoxBackend().initialise();
   // Initialize Supabase
   await Supabase.initialize(
@@ -131,13 +131,14 @@ Future<void> _downloadOfflineMap() async {
 
     // Download high-detailed region
     await FMTC.FMTCStore('mapStore').download.startForeground(
-      region: RectangleRegion(highDetailBounds).toDownloadable(
-      1,
-      15,
-
-      TileLayerOptions(
-      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    );
+      region: FMTC.RectangleRegion(highDetailBounds).toDownloadable(
+      minZoom: 1,
+      maxZoom: 15,
+      options: TileLayer(
+        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ),
+    ),
+   );
   } catch (e) {
     print("Error downloading offline map: $e");
   }
@@ -194,9 +195,11 @@ void dispose() {
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            tileProvider: FMTCTileProvider(
-              store: FMTCStore('mapStore'),
-              Strategy: BrowseStoreStrategy.readUpdateCreate,
+            tileProvider: FMTC.FMTCTileProvider(
+              stores: {
+                'mapStore': FMTC.BrowseStoreStrategy.readUpdateCreate,
+              }
+            ),
           ),
           MarkerLayer(
             markers: _markers,
