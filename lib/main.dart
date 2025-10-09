@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' show FlutterMapTileCaching;
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
 import 'package:geolocator/geolocator.dart';
 import 'dart:math';
 
@@ -12,7 +12,7 @@ Future<void> main() async {
   // Ensure Flutter is Ready
   WidgetsFlutterBinding.ensureInitialized();
   //British FUCKS use an "s" not a "z" with initialize
-  await FlutterMapTileCaching.initialise();
+  await FMTC.FMTCObjectBoxBackend().initialise();
   // Initialize Supabase
   await Supabase.initialize(
     url: 'https://vjageqfberifyclotivb.supabase.co',
@@ -130,11 +130,13 @@ Future<void> _downloadOfflineMap() async {
     );
 
     // Download high-detailed region
-    await FMTC.instance('mapStore').download.start(
-      description: 'High Detail',
-      area: highDetailBounds,
-      minZoom: 1,
-      maxZoom: 15,
+    await FMTC.FMTCStore('mapStore').download.startForeground(
+      region: RectangleRegion(highDetailBounds).toDownloadable(
+      1,
+      15,
+
+      TileLayerOptions(
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     );
   } catch (e) {
     print("Error downloading offline map: $e");
@@ -192,7 +194,9 @@ void dispose() {
         children: [
           TileLayer(
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            tileProvider: FMTC.instance('mapStore').getTileProvider(),
+            tileProvider: FMTCTileProvider(
+              store: FMTCStore('mapStore'),
+              Strategy: BrowseStoreStrategy.readUpdateCreate,
           ),
           MarkerLayer(
             markers: _markers,
