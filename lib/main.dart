@@ -9,6 +9,7 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:math';
 
 Future<void> main() async {
+  try {
   // Ensure Flutter is Ready
   WidgetsFlutterBinding.ensureInitialized();
   //British use an "s" not a "z" with initialize
@@ -18,8 +19,10 @@ Future<void> main() async {
     url: 'https://vjageqfberifyclotivb.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZqYWdlcWZiZXJpZnljbG90aXZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwMjMwOTcsImV4cCI6MjA3MjU5OTA5N30.Lu_RaQsjP4uE_FAFuXSFDNmuhG84ihtdmYZtSXiEz9A',
   );
-
   runApp(const MyApp());
+  } catch (e) {
+    print('Error during initialization: $e'); // Log Errors
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -73,9 +76,13 @@ class _MyAppState extends State<MyApp> {
 @override
 void initState() {
   super.initState();
+  try {
   _getInitialMarkers();
   _downloadOfflineMap();
-}
+  } catch (e) {
+    print('Error in initState: $e');
+  }
+}  
 
 Future<void> _reverseGeocode(LatLng center) async {
 
@@ -117,6 +124,30 @@ Future<void> _addMarkerAtCenter() async {
 
 Future<void> _downloadOfflineMap() async {
   try {
+
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      print('location services are disabled.');
+      return; // Don't proceed if Location is off
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission == await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        print('Locationpermissions are denied');
+        return; // Don't proceed if permission denied
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      print('Location permissions are permanently denied, we cannot request permissions.');
+      return; // proceed if permanantley denied
+    }
+
     //get user's current location
     Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
     LatLng userLocation = LatLng(position.latitude, position.longitude);
@@ -139,6 +170,8 @@ Future<void> _downloadOfflineMap() async {
       ),
     ),
    );
+   print('Map download finished or already cached.'); // Add logging
+
   } catch (e) {
     print("Error downloading offline map: $e");
   }
