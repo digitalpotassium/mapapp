@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart' as FMTC;
 import 'package:geolocator/geolocator.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:math';
 
 Future<void> main() async {
@@ -13,7 +14,9 @@ Future<void> main() async {
   // Ensure Flutter is Ready
   WidgetsFlutterBinding.ensureInitialized();
   //British use an "s" not a "z" with initialize
-  await FMTC.FMTCObjectBoxBackend().initialise();
+  final dir = await getApplicationSupportDirectory();
+  
+  await FMTC.FMTCObjectBoxBackend(path: dir.path).initialise();
   // Initialize Supabase
   await Supabase.initialize(
     url: 'https://vjageqfberifyclotivb.supabase.co',
