@@ -142,7 +142,7 @@ Future<void> _downloadOfflineMap() async {
 
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      permission == await Geolocator.requestPermission();
+      permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         print('Locationpermissions are denied');
         return; // Don't proceed if permission denied
@@ -151,7 +151,7 @@ Future<void> _downloadOfflineMap() async {
 
     if (permission == LocationPermission.deniedForever) {
       print('Location permissions are permanently denied, we cannot request permissions.');
-      return; // proceed if permanantley denied
+      return; // Don't proceed if permanantley denied
     }
 
     //get user's current location
